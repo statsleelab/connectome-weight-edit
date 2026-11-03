@@ -29,14 +29,15 @@ self.onmessage = async ({ data }) => {
       const manifestResponse = await fetch(new URL("manifest.json", baseUrl));
       if (!manifestResponse.ok) throw new Error("Failed to load manifest.json");
       const manifest = await manifestResponse.json();
-      const [offsets, targets, weights, groups] = await Promise.all([
+      const [offsets, targets, weights, groups, sides] = await Promise.all([
         loadArray(baseUrl, manifest.arrays.offsets),
         loadArray(baseUrl, manifest.arrays.targets),
         loadArray(baseUrl, manifest.arrays.weights),
         loadArray(baseUrl, manifest.arrays.groups),
+        loadArray(baseUrl, manifest.arrays.sides),
       ]);
       self.postMessage({ type: "status", message: "Initializing LIF state arrays" });
-      engine = new BrainEngine(manifest, { offsets, targets, weights, groups });
+      engine = new BrainEngine(manifest, { offsets, targets, weights, groups, sides });
       self.postMessage({
         type: "ready",
         neuronCount: manifest.neuron_count,
@@ -50,6 +51,14 @@ self.onmessage = async ({ data }) => {
     if (data.type === "reset") {
       engine.reset(data.seed);
       self.postMessage({ type: "reset-complete" });
+      return;
+    }
+    if (data.type === "edit-connectome") {
+      const summary = engine.applyConnectomeEdit(data.spec, data.maxHighlightEdges);
+      self.postMessage(
+        { type: "edit-complete", ...summary },
+        [summary.potentiatedPairs.buffer, summary.suppressedPairs.buffer],
+      );
       return;
     }
     if (data.type === "step") {

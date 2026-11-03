@@ -1,10 +1,11 @@
-# Embodied Fly Lab
+# Embodied Fly Lab — Connectome Weight Editing
 
-Embodied Fly Lab connects a NeuroMechFly body in a virtual environment to a whole-brain FlyWire spiking network. The left pane shows the MuJoCo world. The right pane shows connectome firing and descending-neuron output from the same moment.
+Embodied Fly Lab connects a NeuroMechFly body in a virtual environment to a whole-brain FlyWire spiking network with real-time **Connectome Weight Editing & Circuit Surgery**. The left pane shows the MuJoCo world. The right pane shows connectome firing, descending-neuron output, and 3D edited synaptic pathways (`cyan` = potentiated, `magenta` = ablated/suppressed) from the same moment.
 
 ## Live site
 
-[Launch the embodied fly simulation](https://statsleelab.github.io/embodied-fly-lab/)
+- **Connectome Weight Edit Lab:** [https://statsleelab.github.io/connectome-weight-edit/](https://statsleelab.github.io/connectome-weight-edit/)
+- **Baseline Embodied Fly Lab:** [https://statsleelab.github.io/embodied-fly-lab/](https://statsleelab.github.io/embodied-fly-lab/)
 
 ## Run locally
 
@@ -23,6 +24,7 @@ The launcher prints and opens a `http://127.0.0.1:.../` URL. Opening `index.html
 - `Touch`: stimulates Johnston's-organ-related sensory populations.
 - `Threat`: stimulates looming-sensitive visual populations and triggers a retreat-turn-sprint ground escape.
 - `Reset`: resets the body, internal state, LIF voltages, and synaptic state.
+- `Weight Edit`: opens the real-time **Connectome Weight Editor** to apply surgical circuit presets (`Super-Forager`, `Fearless Fly`, `Hyper-Escape`, `Hyper-Groomer`, `Voracious Feeder`, or `Custom Circuit Surgery`) and visualize modified synapses in 3D.
 - `Settings`: adjusts physics playback speed and exploration drive.
 - Drag or scroll over the brain: rotates or zooms the connectome.
 - `Anatomy + activity`: overlays recent firing as bright points on the dim anatomy.
@@ -56,12 +58,25 @@ The Web Worker updates membrane voltage, synaptic state, refractory state, and t
 
 This research prototype genuinely integrates the full listed connectivity graph, but it is not a biologically validated complete digital fruit fly. The visual scene uses a looming-population proxy rather than a photoreceptor-level visual model. Sensor intensity and descending-neuron-to-CPG transforms are designed interfaces. The bundled body has no actuated wing joints, so the escape behavior is explicitly presented as a ground retreat, turn, and sprint rather than a biological takeoff. Grooming uses an approximate front-leg trajectory. The project is therefore suited to closed-loop whole-brain/body exploration, not validated prediction of spontaneous biological behavior.
 
+## Connectome Weight Editing Presets & Benchmarks
+
+| Preset | Edited Edges | Left Odor Turn | Right Odor Turn | Center Odor Turn | Forward (`DNg97`) | Threat Escape (`DNp01`) | Weak Touch Groom (`DNg62`) | Weak Sugar Feed (`MN9`) |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| **Wild-Type (v783)** | `0 (0%)` | `-0.77` | `-0.71` | `-0.47` | `1.3 Hz` | `202.4 Hz (1.00)` | `0.0 Hz (0.00)` | `19.0 Hz (0.54)` |
+| **Super-Forager** | `70,530 (0.467%)` | **`-0.80`** | **`+0.80`** | **`+0.09`** | **`49.7 Hz`** | `203.8 Hz (1.00)` | `0.0 Hz (0.00)` | `19.0 Hz (0.54)` |
+| **Fearless Fly** | `1,692 (0.011%)` | `-0.77` | `-0.71` | `-0.47` | `1.3 Hz` | **`0.0 Hz (0.00)`** | `0.0 Hz (0.00)` | `19.0 Hz (0.54)` |
+| **Hyper-Escape** | `63,867 (0.423%)` | `-0.31` | `-0.66` | `-0.36` | `1.3 Hz` | **`323.6 Hz (1.00)`** | `0.0 Hz (0.00)` | `19.0 Hz (0.54)` |
+| **Obsessive Groomer** | `21,820 (0.145%)` | `-0.66` | `-0.80` | `-0.80` | `1.0 Hz` | `192.9 Hz (1.00)` | **`219.9 Hz (1.00)`** | `61.8 Hz (1.00)` |
+| **Voracious Feeder** | `6,954 (0.046%)` | `-0.77` | `-0.71` | `-0.47` | `1.3 Hz` | `202.4 Hz (1.00)` | `0.0 Hz (0.00)` | **`44.2 Hz (1.00)`** |
+
 ## Verification
 
 ```bash
 node tests/brain-activity-timing.test.mjs
 node tests/brain-core.test.mjs
 node tests/locomotion-controller.test.mjs
+node tests/connectome-editor.test.mjs
+node tools/run_connectome_edit_experiments.mjs
 python3 tools/verify_assets.py
 ```
 

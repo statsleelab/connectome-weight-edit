@@ -91,6 +91,7 @@ function startBrainWorker() {
       else if (data.type === "ready") resolve(data);
       else if (data.type === "frame") frameHandler(data);
       else if (data.type === "reset-complete") frameHandler(data);
+      else if (data.type === "edit-complete") frameHandler(data);
       else if (data.type === "error") {
         const error = new Error(data.message);
         error.stack = data.stack || error.stack;
@@ -161,6 +162,30 @@ class BrainRenderer {
       new THREE.LineBasicMaterial({ color: 0x8fa09a, transparent: true, opacity: 0.018 }),
     );
     this.root.add(this.lines);
+
+    this.potentiatedGeometry = new THREE.BufferGeometry();
+    this.potentiatedLines = new THREE.LineSegments(
+      this.potentiatedGeometry,
+      new THREE.LineBasicMaterial({
+        color: 0x4ef2e0,
+        transparent: true,
+        opacity: 0.24,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      }),
+    );
+    this.suppressedGeometry = new THREE.BufferGeometry();
+    this.suppressedLines = new THREE.LineSegments(
+      this.suppressedGeometry,
+      new THREE.LineBasicMaterial({
+        color: 0xff5e7e,
+        transparent: true,
+        opacity: 0.18,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      }),
+    );
+    this.root.add(this.potentiatedLines, this.suppressedLines);
 
     const glowCanvas = document.createElement("canvas");
     glowCanvas.width = glowCanvas.height = 64;
@@ -244,6 +269,28 @@ class BrainRenderer {
     document.querySelectorAll("[data-brain-mode]").forEach((button) => {
       button.setAttribute("aria-pressed", String(button.dataset.brainMode === mode));
     });
+  }
+
+  setEditedEdges(potentiatedPairs, suppressedPairs) {
+    const buildCoords = (pairs) => {
+      if (!pairs || !pairs.length) return new Float32Array(0);
+      const coords = new Float32Array(pairs.length * 3);
+      for (let i = 0; i < pairs.length; i++) {
+        const neuron = pairs[i];
+        coords[i * 3] = this.positions[neuron * 3];
+        coords[i * 3 + 1] = this.positions[neuron * 3 + 1];
+        coords[i * 3 + 2] = this.positions[neuron * 3 + 2];
+      }
+      return coords;
+    };
+
+    const potCoords = buildCoords(potentiatedPairs);
+    this.potentiatedGeometry.setAttribute("position", new THREE.BufferAttribute(potCoords, 3));
+    this.potentiatedGeometry.setDrawRange(0, potCoords.length / 3);
+
+    const supCoords = buildCoords(suppressedPairs);
+    this.suppressedGeometry.setAttribute("position", new THREE.BufferAttribute(supCoords, 3));
+    this.suppressedGeometry.setDrawRange(0, supCoords.length / 3);
   }
 
   _bindPointerControls() {
@@ -687,6 +734,47 @@ class EmbodiedFlyLab {
       panel.hidden = !panel.hidden;
       byId("settings-button").setAttribute("aria-expanded", String(!panel.hidden));
     });
+    const toggleEditorPanel = (forceOpen) => {
+      const panel = byId("connectome-editor");
+      const open = forceOpen !== undefined ? forceOpen : panel.hidden;
+      panel.hidden = !open;
+      byId("editor-button").setAttribute("aria-expanded", String(open));
+    };
+    byId("editor-button").addEventListener("click", () => toggleEditorPanel());
+    byId("editor-close").addEventListener("click", () => toggleEditorPanel(false));
+
+    document.querySelectorAll("[data-preset]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const preset = button.dataset.preset;
+        document.querySelectorAll("[data-preset]").forEach((peer) => {
+          peer.setAttribute("aria-pressed", String(peer === button));
+        });
+        const customBox = byId("custom-surgery-controls");
+        if (preset === "custom") {
+          customBox.hidden = false;
+          this.applyCustomSurgery();
+        } else {
+          customBox.hidden = true;
+          this.brainConnection.worker.postMessage({
+            type: "edit-connectome",
+            spec: { preset },
+          });
+        }
+      });
+    });
+
+    byId("surgery-hops").addEventListener("input", (event) => {
+      const hops = Number(event.target.value);
+      byId("surgery-hops-value").textContent = `${hops} ${hops === 1 ? "hop" : "hops"}`;
+    });
+    byId("surgery-exc").addEventListener("input", (event) => {
+      byId("surgery-exc-value").textContent = `${Number(event.target.value).toFixed(1)}x`;
+    });
+    byId("surgery-inh").addEventListener("input", (event) => {
+      byId("surgery-inh-value").textContent = `${Number(event.target.value).toFixed(1)}x`;
+    });
+    byId("apply-surgery-button").addEventListener("click", () => this.applyCustomSurgery());
+
     byId("speed-range").addEventListener("input", (event) => {
       this.playbackSpeed = Number(event.target.value);
       byId("speed-value").textContent = `${this.playbackSpeed.toFixed(2)}x`;
@@ -703,6 +791,18 @@ class EmbodiedFlyLab {
         });
       });
     });
+  }
+
+  applyCustomSurgery() {
+    const spec = {
+      preset: "custom",
+      sourcePopulation: byId("surgery-source").value,
+      targetPopulation: byId("surgery-target").value,
+      maxHops: Number(byId("surgery-hops").value),
+      excitatoryGain: Number(byId("surgery-exc").value),
+      inhibitoryGain: Number(byId("surgery-inh").value),
+    };
+    this.brainConnection.worker.postMessage({ type: "edit-connectome", spec });
   }
 
   triggerThreat() {
@@ -821,7 +921,7 @@ class EmbodiedFlyLab {
         escapeCommand.right,
         escapeCommand,
       );
-    } else if (this.motor.groom > 0.22 && this.dust > 0.25) {
+    } else if (this.motor.groom > 0.22 && (this.dust > 0.25 || this.motor.groom > 0.55)) {
       this.controller.stepGroom(this.data.ctrl, this.simTime);
     } else {
       const gait = mixDescendingCommands(base, turn);
@@ -858,6 +958,10 @@ class EmbodiedFlyLab {
       this.brainBusy = false;
       return;
     }
+    if (frame.type === "edit-complete") {
+      this.onEditComplete(frame);
+      return;
+    }
     if (frame.requestId <= this.ignoreFramesThrough) return;
     this.brainBusy = false;
     this.motor = frame.motor;
@@ -869,6 +973,27 @@ class EmbodiedFlyLab {
     byId("metric-brain-time").textContent = `${(frame.brainTimeMs / 1000).toFixed(2)} s`;
     byId("metric-compute").textContent = `${frame.computeMs.toFixed(0)} ms`;
     this.updateMotorHud();
+  }
+
+  onEditComplete(summary) {
+    const pct = (summary.editedFraction * 100).toFixed(summary.editedEdges > 0 ? 3 : 2);
+    byId("metric-edits").textContent = summary.shortLabel || "Wild-Type";
+    byId("metric-edits-sub").textContent = summary.editedEdges > 0
+      ? `${number.format(summary.editedEdges)} edges (${pct}%)`
+      : "0 edited edges";
+    byId("editor-button").classList.toggle("active-edit", summary.editedEdges > 0);
+
+    byId("edit-preset-name").textContent = summary.name;
+    byId("edit-preset-badge").textContent = summary.category;
+    byId("edit-preset-desc").textContent = summary.description;
+    byId("edit-stat-edges").textContent =
+      `${number.format(summary.editedEdges)} / ${number.format(summary.totalEdges)} edges (${pct}%)`;
+    byId("edit-stat-pot").textContent = `+${number.format(summary.potentiatedEdges)} potentiated`;
+    byId("edit-stat-sup").textContent = `-${number.format(summary.suppressedEdges)} suppressed (${number.format(summary.ablatedEdges)} ablated)`;
+
+    this.brain.setEditedEdges(summary.potentiatedPairs, summary.suppressedPairs);
+    byId("legend-potentiated").hidden = summary.potentiatedPairs.length === 0;
+    byId("legend-suppressed").hidden = summary.suppressedPairs.length === 0;
   }
 
   updateMotorHud() {
@@ -900,7 +1025,7 @@ class EmbodiedFlyLab {
       const phaseLabels = { retreat: "retreat", turn: "turning", sprint: "sprint" };
       behavior = `Ground escape: ${phaseLabels[this.escapePhase] || "sprint"}`;
     } else if (this.loomTimer > 0.1) behavior = "Threat detected";
-    else if (this.motor.groom > 0.22 && this.dust > 0.25) behavior = "Antennal grooming";
+    else if (this.motor.groom > 0.22 && (this.dust > 0.25 || this.motor.groom > 0.55)) behavior = "Antennal grooming";
     else if (sugar && this.motor.feed > 0.18) behavior = "Feeding";
     else if (this.motor.forward > 0.08) behavior = "Food seeking";
     byId("behavior-label").textContent = behavior;

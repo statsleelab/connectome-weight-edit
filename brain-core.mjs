@@ -1,3 +1,5 @@
+import { ConnectomeEditor } from "./connectome-editor.mjs";
+
 const READOUT_NAMES = [
   "forward_odn1",
   "walk_dnp09",
@@ -26,14 +28,23 @@ export class BrainEngine {
     this.manifest = manifest;
     this.offsets = arrays.offsets;
     this.targets = arrays.targets;
-    this.weights = arrays.weights;
+    this.weights = new Int16Array(arrays.weights);
     this.groups = arrays.groups;
+    this.sides = arrays.sides || null;
     this.n = manifest.neuron_count;
 
     if (this.offsets.length !== this.n + 1) throw new Error("invalid CSR offsets");
     if (this.targets.length !== manifest.edge_count) throw new Error("invalid targets");
     if (this.weights.length !== manifest.edge_count) throw new Error("invalid weights");
     if (this.groups.length !== this.n) throw new Error("invalid group codes");
+
+    this.editor = new ConnectomeEditor(manifest, {
+      offsets: this.offsets,
+      targets: this.targets,
+      baseWeights: arrays.weights,
+      sides: this.sides,
+      groups: this.groups,
+    });
 
     const p = manifest.lif;
     this.dt = p.dt_ms;
@@ -90,6 +101,10 @@ export class BrainEngine {
     this.timeMs = 0;
     this.totalSpikes = 0;
     this.randomState = seed >>> 0;
+  }
+
+  applyConnectomeEdit(spec = { preset: "wild_type" }, maxHighlightEdges = 6000) {
+    return this.editor.applyEdit(this.weights, spec, maxHighlightEdges);
   }
 
   random() {
