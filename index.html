@@ -37,9 +37,6 @@
           <a class="btn" href="lab.html">
             Launch Live 3D Connectome Surgery Lab (MuJoCo + 138k Neurons) &rarr;
           </a>
-          <a class="btn secondary" href="paper.pdf" target="_blank" rel="noopener">
-            Read Full Research Paper (PDF, 20 Pages) &rarr;
-          </a>
           <a class="btn secondary" href="https://github.com/statsleelab/connectome-weight-edit" target="_blank" rel="noopener">
             GitHub Code &amp; Benchmark Suite
           </a>
@@ -83,9 +80,6 @@
         <div class="hero-links">
           <a class="btn" href="lab.html">
             실시간 3D 커넥톰 시뮬레이터 실행 (MuJoCo + 13.8만 뉴런) &rarr;
-          </a>
-          <a class="btn secondary" href="paper.pdf" target="_blank" rel="noopener">
-            연구 논문 전문 보기 (PDF, 20쪽) &rarr;
           </a>
           <a class="btn secondary" href="https://github.com/statsleelab/connectome-weight-edit" target="_blank" rel="noopener">
             GitHub 코드 및 벤치마크 저장소
@@ -131,7 +125,7 @@
         <a class="nav-pill" href="#phenotypes">§4 6 Surgical Phenotypes</a>
         <a class="nav-pill" href="#orthogonality">§5 Zero Collateral Drift</a>
         <a class="nav-pill" href="#live-lab">§6 3D Interactive Lab</a>
-        <a class="nav-pill" href="#reproduce">§7 Reproduce &amp; Paper</a>
+        <a class="nav-pill" href="#reproduce">§7 Reproducibility</a>
       </div>
       <div class="nav-pills lang-ko">
         <a class="nav-pill" href="#overview">§1 연구 배경: 인공신경망 vs 생물 뇌</a>
@@ -140,7 +134,7 @@
         <a class="nav-pill" href="#phenotypes">§4 6가지 행동 표현형</a>
         <a class="nav-pill" href="#orthogonality">§5 행동 모듈 독립성 검증</a>
         <a class="nav-pill" href="#live-lab">§6 실시간 3D 시뮬레이터</a>
-        <a class="nav-pill" href="#reproduce">§7 실험 재현 및 논문</a>
+        <a class="nav-pill" href="#reproduce">§7 실험 재현 안내</a>
       </div>
       <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
         <a class="btn" href="lab.html" style="padding:5px 11px;font-size:12px;">3D Lab &rarr;</a>
@@ -351,13 +345,13 @@
       </div>
     </section>
 
-    <!-- §7 REPRODUCIBILITY & PAPER -->
+    <!-- §7 REPRODUCIBILITY -->
     <section id="reproduce">
-      <span class="section-tag">§7 &middot; Reproducibility Guide &amp; Full Manuscript</span>
+      <span class="section-tag">§7 &middot; Reproducibility Guide</span>
       <div class="lang-en">
         <h2>Reproduce All Quantitative Benchmarks &amp; Unit Tests Locally</h2>
         <p>
-          All CSR connectome weight-editing operators (<code>connectome-editor.mjs</code>), whole-brain LIF spiking engines (<code>brain-core.mjs</code>), automated unit tests, and quantitative benchmark suites are openly available in <a href="https://github.com/statsleelab/connectome-weight-edit" target="_blank" rel="noopener">statsleelab/connectome-weight-edit</a>, and the full 20-page research paper is available at <a href="paper.pdf" target="_blank" rel="noopener">paper.pdf</a>.
+          All CSR connectome weight-editing operators (<code>connectome-editor.mjs</code>), whole-brain LIF spiking engines (<code>brain-core.mjs</code>), automated unit tests, and quantitative benchmark suites are openly available in <a href="https://github.com/statsleelab/connectome-weight-edit" target="_blank" rel="noopener">statsleelab/connectome-weight-edit</a>.
         </p>
         <pre><code>git clone https://github.com/statsleelab/connectome-weight-edit.git
 cd connectome-weight-edit
@@ -374,7 +368,7 @@ python3 serve.py</code></pre>
       <div class="lang-ko">
         <h2>로컬 환경에서의 정량 벤치마크 및 단위 테스트 재현 안내</h2>
         <p>
-          CSR 커넥톰 가중치 편집 모듈(<code>connectome-editor.mjs</code>), 전뇌 LIF 스파이킹 시뮬레이션 코어(<code>brain-core.mjs</code>), 자동화 단위 테스트, 그리고 6가지 표현형의 정량 벤치마크 스크립트 전체가 <a href="https://github.com/statsleelab/connectome-weight-edit" target="_blank" rel="noopener">statsleelab/connectome-weight-edit</a> 저장소에 공개되어 있으며, 20쪽 분량의 연구 논문 전문은 <a href="paper.pdf" target="_blank" rel="noopener">paper.pdf</a>에서 열람하실 수 있습니다.
+          CSR 커넥톰 가중치 편집 모듈(<code>connectome-editor.mjs</code>), 전뇌 LIF 스파이킹 시뮬레이션 코어(<code>brain-core.mjs</code>), 자동화 단위 테스트, 그리고 6가지 표현형의 정량 벤치마크 스크립트 전체가 <a href="https://github.com/statsleelab/connectome-weight-edit" target="_blank" rel="noopener">statsleelab/connectome-weight-edit</a> 저장소에 공개되어 있습니다.
         </p>
         <pre><code>git clone https://github.com/statsleelab/connectome-weight-edit.git
 cd connectome-weight-edit

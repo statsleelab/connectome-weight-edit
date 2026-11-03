@@ -2,11 +2,10 @@
 
 Embodied Fly Lab connects a NeuroMechFly body in a virtual environment to a whole-brain FlyWire spiking network with real-time **Connectome Weight Editing & Circuit Surgery**. The left pane shows the MuJoCo world. The right pane shows connectome firing, descending-neuron output, and 3D edited synaptic pathways (`cyan` = potentiated, `magenta` = ablated/suppressed) from the same moment.
 
-## Live sites & Research Paper
+## Live sites
 
 - **Interactive Research Report & Circuit Back-Tracing Guide (GitPage):** [https://statsleelab.github.io/connectome-weight-edit/](https://statsleelab.github.io/connectome-weight-edit/)
 - **Live 3D MuJoCo + Whole-Brain LIF Surgery Simulator:** [https://statsleelab.github.io/connectome-weight-edit/lab.html](https://statsleelab.github.io/connectome-weight-edit/lab.html)
-- **Full Research Paper (PDF, 20 Pages):** [https://statsleelab.github.io/connectome-weight-edit/paper.pdf](https://statsleelab.github.io/connectome-weight-edit/paper.pdf)
 - **Part I — LLM Weight-Space Programming (MIT CSAIL Reproduction):** [https://statsleelab.github.io/weight_space_programming/](https://statsleelab.github.io/weight_space_programming/)
 - **Baseline Embodied Fly Lab:** [https://statsleelab.github.io/embodied-fly-lab/](https://statsleelab.github.io/embodied-fly-lab/)
 
