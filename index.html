@@ -1,640 +1,397 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Embodied Fly Lab</title>
-  <style>
-    :root {
-      color-scheme: dark;
-      --bg: #0d1011;
-      --panel: #15191a;
-      --panel-2: #1b2021;
-      --line: #303738;
-      --ink: #edf2ef;
-      --muted: #9ca8a3;
-      --green: #62c48d;
-      --yellow: #e8bd57;
-      --red: #e1695e;
-      --blue: #66a7cb;
-      --cyan: #6fc9c0;
-      --control: #252b2c;
-      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    }
-
-    * { box-sizing: border-box; }
-    html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--ink); }
-    button, input { font: inherit; }
-    button { color: inherit; }
-
-    .app-shell {
-      height: 100dvh;
-      min-height: 620px;
-      display: grid;
-      grid-template-rows: auto minmax(0, 1fr);
-    }
-
-    .topbar {
-      min-height: 62px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 10px 14px;
-      border-bottom: 1px solid var(--line);
-      background: #111516;
-    }
-
-    .brand { min-width: 174px; }
-    .brand h1 { margin: 0; font-size: 17px; font-weight: 500; letter-spacing: 0; }
-    .brand p { margin: 3px 0 0; color: var(--muted); font-size: 11px; }
-
-    .system-status {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      min-width: 148px;
-      color: var(--muted);
-      font-size: 12px;
-    }
-
-    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--yellow); flex: 0 0 auto; }
-    .status-dot.ready { background: var(--green); }
-    .status-dot.error { background: var(--red); }
-
-    .metrics {
-      display: flex;
-      align-items: center;
-      gap: 11px;
-      margin-right: auto;
-      min-width: 0;
-    }
-
-    .metric { min-width: 68px; }
-    .metric strong { display: block; font-size: 13px; font-weight: 500; font-variant-numeric: tabular-nums; }
-    .metric span { display: block; margin-top: 2px; color: var(--muted); font-size: 10px; }
-
-    .toolbar { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; justify-content: flex-end; }
-    .btn {
-      flex: 0 0 auto;
-      min-height: 34px;
-      padding: 7px 9px;
-      border: 1px solid var(--line);
-      border-radius: 6px;
-      background: var(--control);
-      cursor: pointer;
-      font-size: 12px;
-      white-space: nowrap;
-    }
-    .btn:hover { border-color: #596364; background: #2c3334; }
-    .btn.primary { background: var(--ink); color: #111516; border-color: var(--ink); font-weight: 500; }
-    .btn[aria-pressed="true"] { border-color: var(--green); color: var(--green); }
-
-    .split-view {
-      min-height: 0;
-      display: grid;
-      grid-template-columns: minmax(500px, 1.45fr) minmax(400px, 1fr);
-    }
-
-    .world-panel, .brain-panel { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
-    .world-panel { border-right: 1px solid var(--line); background: #171c1c; }
-    #world-stage, #brain-stage { position: absolute; inset: 0; }
-    #world-stage canvas, #brain-stage canvas { display: block; width: 100%; height: 100%; }
-
-    .panel-heading {
-      position: absolute;
-      z-index: 5;
-      top: 12px;
-      left: 12px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      pointer-events: none;
-    }
-    .panel-heading h2 { margin: 0; font-size: 12px; font-weight: 500; letter-spacing: 0; }
-    .mode-label { color: var(--muted); font-size: 10px; }
-
-    .camera-control {
-      position: absolute;
-      z-index: 6;
-      top: 10px;
-      right: 10px;
-      display: flex;
-      border: 1px solid var(--line);
-      border-radius: 6px;
-      overflow: hidden;
-      background: rgba(17, 21, 22, .86);
-    }
-    .camera-control button {
-      height: 30px;
-      padding: 0 10px;
-      border: 0;
-      border-right: 1px solid var(--line);
-      background: transparent;
-      color: var(--muted);
-      cursor: pointer;
-      font-size: 11px;
-    }
-    .camera-control button:last-child { border-right: 0; }
-    .camera-control button[aria-pressed="true"] { color: var(--ink); background: var(--control); }
-
-    .world-readout {
-      position: absolute;
-      z-index: 5;
-      left: 12px;
-      bottom: 12px;
-      width: min(420px, calc(100% - 24px));
-      padding: 10px 12px;
-      border: 1px solid rgba(255,255,255,.12);
-      border-radius: 6px;
-      background: rgba(15, 18, 19, .84);
-      backdrop-filter: blur(8px);
-    }
-
-    .behavior-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-    .behavior-row strong { font-size: 14px; font-weight: 500; }
-    .behavior-row span { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
-
-    .sensors { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 9px; }
-    .sensor label { display: flex; justify-content: space-between; color: var(--muted); font-size: 10px; }
-    .meter { height: 4px; margin-top: 5px; background: #303536; overflow: hidden; }
-    .meter span { display: block; width: 0; height: 100%; background: var(--green); transition: width .12s linear; }
-    .sensor:nth-child(2) .meter span { background: var(--yellow); }
-    .sensor:nth-child(3) .meter span { background: var(--blue); }
-
-    .brain-panel { display: grid; grid-template-rows: minmax(340px, 1fr) 170px; background: #111516; }
-    .brain-view { position: relative; min-height: 0; border-bottom: 1px solid var(--line); }
-    .brain-stats {
-      position: absolute;
-      z-index: 5;
-      right: 12px;
-      top: 12px;
-      text-align: right;
-      color: var(--muted);
-      font-size: 10px;
-      font-variant-numeric: tabular-nums;
-      pointer-events: none;
-    }
-    .brain-stats strong { display: block; color: var(--ink); font-size: 13px; font-weight: 500; }
-    .brain-stats span { display: block; }
-    .brain-stats .active-focus { margin-top: 4px; color: var(--yellow); }
-
-    .brain-mode-control {
-      position: absolute;
-      z-index: 6;
-      top: 70px;
-      right: 10px;
-      display: flex;
-      border: 1px solid var(--line);
-      border-radius: 6px;
-      overflow: hidden;
-      background: rgba(17, 21, 22, .88);
-    }
-    .brain-mode-control button {
-      height: 28px;
-      padding: 0 9px;
-      border: 0;
-      border-right: 1px solid var(--line);
-      background: transparent;
-      color: var(--muted);
-      cursor: pointer;
-      font-size: 10px;
-    }
-    .brain-mode-control button:last-child { border-right: 0; }
-    .brain-mode-control button[aria-pressed="true"] { color: #111516; background: var(--yellow); }
-
-    .legend {
-      position: absolute;
-      z-index: 5;
-      left: 12px;
-      bottom: 11px;
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      max-width: calc(100% - 24px);
-      color: var(--muted);
-      font-size: 9px;
-      pointer-events: none;
-    }
-    .legend span { display: inline-flex; align-items: center; gap: 4px; }
-    .swatch { width: 7px; height: 7px; border-radius: 50%; }
-    .swatch.firing { box-shadow: 0 0 7px #ffd65e; }
-
-    .activity-panel { display: grid; grid-template-columns: minmax(0, 1fr) 150px; min-height: 0; }
-    .raster-wrap { position: relative; min-width: 0; padding: 12px; }
-    .raster-wrap h3, .motor-readout h3 { margin: 0 0 8px; color: var(--muted); font-size: 10px; font-weight: 500; }
-    #activity-raster { display: block; width: 100%; height: 118px; background: #0d1011; }
-    .motor-readout { padding: 10px 12px; border-left: 1px solid var(--line); }
-    .motor-readout h3 { margin-bottom: 6px; }
-    .motor-line { margin-bottom: 4px; }
-    .motor-line label { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); }
-    .motor-line output { color: var(--ink); font-variant-numeric: tabular-nums; }
-    .motor-readout .meter { margin-top: 3px; }
-    .motor-line.escape .meter span { background: var(--red); }
-
-    .loading {
-      position: absolute;
-      z-index: 20;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: rgba(13, 16, 17, .94);
-    }
-    .loading[hidden] { display: none; }
-    .loading-box { width: min(420px, calc(100% - 40px)); }
-    .loading-box strong { display: block; font-size: 14px; font-weight: 500; }
-    .loading-box p { margin: 7px 0 12px; color: var(--muted); font-size: 11px; line-height: 1.5; }
-    .loading-track { height: 3px; background: var(--line); overflow: hidden; }
-    .loading-track span { display: block; width: 35%; height: 100%; background: var(--yellow); animation: loading 1.2s ease-in-out infinite alternate; }
-    @keyframes loading { from { transform: translateX(-100%); } to { transform: translateX(285%); } }
-
-    .settings {
-      position: absolute;
-      z-index: 7;
-      top: 52px;
-      right: 10px;
-      width: 210px;
-      padding: 11px;
-      border: 1px solid var(--line);
-      border-radius: 6px;
-      background: #171c1d;
-      box-shadow: 0 12px 30px rgba(0,0,0,.35);
-    }
-    .settings[hidden] { display: none; }
-    .setting { margin-bottom: 12px; }
-    .setting:last-child { margin-bottom: 0; }
-    .setting label { display: flex; justify-content: space-between; margin-bottom: 5px; color: var(--muted); font-size: 10px; }
-    .setting input { width: 100%; accent-color: var(--green); }
-
-    .btn.editor-btn { border-color: #3d6b68; color: var(--cyan); }
-    .btn.editor-btn[aria-expanded="true"], .btn.editor-btn.active-edit {
-      border-color: var(--cyan);
-      background: rgba(111, 201, 192, 0.14);
-      color: #dffaf7;
-    }
-
-    .editor-panel {
-      position: absolute;
-      z-index: 12;
-      top: 40px;
-      left: 12px;
-      width: min(360px, calc(100% - 24px));
-      max-height: calc(100% - 76px);
-      overflow-y: auto;
-      padding: 12px;
-      border: 1px solid rgba(111, 201, 192, 0.35);
-      border-radius: 8px;
-      background: rgba(17, 22, 24, 0.94);
-      backdrop-filter: blur(10px);
-      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.55);
-    }
-    .editor-panel[hidden] { display: none; }
-    .editor-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 8px;
-    }
-    .editor-header h3 { margin: 0; font-size: 12px; font-weight: 600; color: var(--cyan); }
-    .editor-close {
-      border: 0;
-      background: transparent;
-      color: var(--muted);
-      cursor: pointer;
-      font-size: 13px;
-      padding: 2px 6px;
-    }
-    .preset-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 5px;
-      margin-bottom: 10px;
-    }
-    .preset-btn {
-      padding: 6px 8px;
-      border: 1px solid var(--line);
-      border-radius: 5px;
-      background: var(--panel-2);
-      color: var(--ink);
-      font-size: 11px;
-      text-align: left;
-      cursor: pointer;
-      transition: border-color 0.12s, background 0.12s;
-    }
-    .preset-btn:hover { border-color: #596364; background: #242b2d; }
-    .preset-btn[aria-pressed="true"] {
-      border-color: var(--cyan);
-      background: rgba(111, 201, 192, 0.16);
-      color: #ffffff;
-      font-weight: 500;
-    }
-    .preset-btn small {
-      display: block;
-      margin-top: 2px;
-      color: var(--muted);
-      font-size: 9px;
-      font-weight: 400;
-    }
-    .edit-summary {
-      padding: 8px 10px;
-      border: 1px solid var(--line);
-      border-radius: 6px;
-      background: rgba(13, 16, 17, 0.75);
-      margin-bottom: 8px;
-    }
-    .edit-summary-top {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 6px;
-      margin-bottom: 4px;
-    }
-    .edit-summary-top strong { font-size: 11px; color: var(--ink); }
-    .edit-badge {
-      padding: 2px 6px;
-      border-radius: 4px;
-      background: rgba(111, 201, 192, 0.16);
-      color: var(--cyan);
-      font-size: 9px;
-      font-variant-numeric: tabular-nums;
-    }
-    .edit-summary p {
-      margin: 0 0 6px;
-      color: var(--muted);
-      font-size: 10px;
-      line-height: 1.45;
-    }
-    .edit-stats-row {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      font-size: 10px;
-      font-variant-numeric: tabular-nums;
-      color: var(--muted);
-    }
-    .edit-stats-row .stat-pot { color: #4ef2e0; }
-    .edit-stats-row .stat-sup { color: #ff5e7e; }
-    .custom-surgery {
-      padding-top: 8px;
-      border-top: 1px solid var(--line);
-    }
-    .custom-surgery[hidden] { display: none; }
-    .surgery-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 6px;
-      margin-bottom: 8px;
-    }
-    .surgery-field label {
-      display: block;
-      margin-bottom: 3px;
-      color: var(--muted);
-      font-size: 10px;
-    }
-    .surgery-field select {
-      width: 100%;
-      padding: 4px 6px;
-      border: 1px solid var(--line);
-      border-radius: 4px;
-      background: var(--control);
-      color: var(--ink);
-      font-size: 10px;
-    }
-
-    @media (max-width: 1180px) {
-      .topbar { align-items: flex-start; flex-wrap: wrap; }
-      .brand { margin-right: auto; }
-      .metrics { order: 3; width: 100%; overflow: hidden; }
-      .toolbar { flex-wrap: wrap; }
-    }
-
-    @media (max-width: 980px) {
-      .app-shell { height: auto; min-height: 100dvh; grid-template-rows: auto auto; }
-      .metric:nth-child(n+4) { display: none; }
-      .split-view { grid-template-columns: 1fr; grid-template-rows: 62vh 70vh; }
-      .world-panel { border-right: 0; border-bottom: 1px solid var(--line); }
-      .brain-panel { grid-template-rows: minmax(400px, 1fr) 170px; }
-    }
-
-    @media (max-width: 560px) {
-      .system-status { order: 4; width: 100%; }
-      .toolbar { width: 100%; justify-content: flex-start; }
-      .metrics { gap: 10px; }
-      .metric { min-width: 70px; }
-      .split-view { grid-template-rows: 65vh auto; }
-      .brain-panel { grid-template-rows: minmax(450px, 1fr) 340px; }
-      .activity-panel { grid-template-columns: 1fr; grid-template-rows: 170px 170px; }
-      .motor-readout { border-left: 0; border-top: 1px solid var(--line); }
-      .sensors { grid-template-columns: 1fr; }
-      .world-readout { width: 220px; }
-    }
-  </style>
-  <script type="importmap">
-  { "imports": { "three": "./shared/vendor/three/three.module.js" } }
-  </script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Surgical Weight-Space Programming of a Whole-Brain Drosophila Connectome — Interactive Research Report</title>
+  <meta name="description" content="Mechanistic reverse-engineering, 3-hop circuit back-tracing, and surgical weight-space programming on the 138,639-neuron FlyWire FAFB v783 Drosophila connectome coupled to a 48-actuator MuJoCo body (English & Korean)." />
+  <link rel="stylesheet" href="guide-style.css?v=1" />
 </head>
-<body>
-  <div class="app-shell">
-    <header class="topbar">
-      <div class="brand">
-        <h1>Embodied Fly Lab</h1>
-        <p>FlyWire v783 + NeuroMechFly 2.1</p>
-      </div>
-      <div class="system-status" role="status" aria-live="polite">
-        <span id="status-dot" class="status-dot"></span>
-        <span id="status-text">Initializing</span>
-      </div>
-      <div class="metrics" aria-label="Simulation statistics">
-        <div class="metric"><strong id="metric-neurons">-</strong><span>Neurons</span></div>
-        <div class="metric"><strong id="metric-edges">-</strong><span>Weighted edges</span></div>
-        <div class="metric"><strong id="metric-edits">Wild-Type</strong><span id="metric-edits-sub">0 edited edges</span></div>
-        <div class="metric"><strong id="metric-brain-time">0.00 s</strong><span>Brain time</span></div>
-        <div class="metric"><strong id="metric-ratio">0.00x</strong><span>Physics rate</span></div>
-        <div class="metric"><strong id="metric-compute">- ms</strong><span>15 ms brain step</span></div>
-      </div>
-      <div class="toolbar">
-        <button id="play-button" class="btn primary" type="button">Pause</button>
-        <button id="food-button" class="btn" type="button">Add food</button>
-        <button id="dust-button" class="btn" type="button">Touch</button>
-        <button id="loom-button" class="btn" type="button">Threat</button>
-        <button id="reset-button" class="btn" type="button">Reset</button>
-        <button id="editor-button" class="btn editor-btn" type="button" aria-expanded="false">Weight Edit</button>
-        <button id="settings-button" class="btn" type="button" aria-expanded="false">Settings</button>
-      </div>
-    </header>
+<body data-lang="en">
 
-    <main class="split-view">
-      <section class="world-panel" aria-label="Virtual environment and NeuroMechFly body">
-        <div id="world-stage"></div>
-        <div class="panel-heading"><h2>Virtual environment</h2><span class="mode-label">MuJoCo 0.1 ms</span></div>
-        <div class="camera-control" aria-label="Camera mode">
-          <button type="button" data-camera="follow" aria-pressed="true">Follow</button>
-          <button type="button" data-camera="top" aria-pressed="false">Top</button>
+  <!-- HERO -->
+  <header class="hero">
+    <div class="container">
+      <div class="top-bar">
+        <div class="badges" style="margin-bottom:0;">
+          <span class="badge green">FlyWire FAFB v783 (138,639 Neurons)</span>
+          <span class="badge">15,091,983 Directed CSR Edges</span>
+          <span class="badge purple">NeuroMechFly 2.1 MuJoCo Loop</span>
+          <span class="badge green">0.0% Off-Target Collateral Drift</span>
         </div>
-        <div id="settings" class="settings" hidden>
-          <div class="setting">
-            <label for="speed-range"><span>Physics playback</span><output id="speed-value">0.08x</output></label>
-            <input id="speed-range" type="range" min="0.02" max="0.16" step="0.01" value="0.08">
-          </div>
-          <div class="setting">
-            <label for="drive-range"><span>Exploration drive</span><output id="drive-value">55 Hz</output></label>
-            <input id="drive-range" type="range" min="0" max="100" step="5" value="55">
-          </div>
+        <div class="lang-switch" aria-label="Language Switcher">
+          <button class="lang-btn active" data-set-lang="en">English</button>
+          <button class="lang-btn" data-set-lang="ko">한국어</button>
         </div>
-        <div class="world-readout">
-          <div class="behavior-row"><strong id="behavior-label">Exploring</strong><span id="pose-readout">x 0.0 | y 0.0 | 0 deg</span></div>
-          <div class="sensors">
-            <div class="sensor"><label><span>Food odor</span><output id="odor-value">0%</output></label><div class="meter"><span id="odor-meter"></span></div></div>
-            <div class="sensor"><label><span>Sugar contact</span><output id="sugar-value">0%</output></label><div class="meter"><span id="sugar-meter"></span></div></div>
-            <div class="sensor"><label><span>Touch</span><output id="touch-value">0%</output></label><div class="meter"><span id="touch-meter"></span></div></div>
-          </div>
-        </div>
-        <div id="loading" class="loading">
-          <div class="loading-box">
-            <strong>Preparing the whole brain and body</strong>
-            <p id="loading-message">Reading FlyWire metadata</p>
-            <div class="loading-track"><span></span></div>
-          </div>
-        </div>
-      </section>
+      </div>
 
-      <section class="brain-panel" aria-label="Whole-brain connectome activity">
-        <div class="brain-view">
-          <div id="brain-stage"></div>
-          <div class="panel-heading"><h2>Whole-brain activity</h2><span class="mode-label">Whole-graph LIF</span></div>
-          <div class="brain-stats"><strong id="spike-rate">0 spikes/s</strong><span id="active-count">0 active neurons</span><span id="active-focus" class="active-focus">Locating activity</span></div>
-          <div class="brain-mode-control" aria-label="Brain display mode">
-            <button type="button" data-brain-mode="context" aria-pressed="true">Anatomy + activity</button>
-            <button type="button" data-brain-mode="activity" aria-pressed="false">Activity only</button>
+      <!-- English Hero -->
+      <div class="lang-en">
+        <h1>Surgical Weight-Space Programming of a Whole-Brain<br/><em>Drosophila</em> Connectome Reprograms Embodied Behavior</h1>
+        <p class="subtitle">
+          <strong>Abstract —</strong> Can weight-space programming—recently developed to steer and abliterate capabilities in Large Language Models (LLMs)—be transferred to a <strong>whole-brain biological connectome</strong>?
+          By introducing <strong>spike-weighted synaptic flux attribution (\(\Phi_{u \to v} = s_u W_{uv}\))</strong> and <strong>bidirectional \(k\)-hop graph intersection</strong> directly on the <code>15,091,983</code> compressed sparse row (CSR) edges of the adult <em>Drosophila melanogaster</em> brain (FlyWire FAFB v783; <code>138,639</code> LIF neurons) coupled in a <code>15 ms</code> sensorimotor loop to a 48-actuator biomechanical body (NeuroMechFly 2.1 in MuJoCo), we first solve a long-standing puzzle in static connectome simulation: why the unedited FlyWire v783 brain turns <em>left</em> (<code>motor.turn = -0.71</code>) even under unilateral right-antenna odor stimulation.
+          Isolating and calibrating a compact 3-hop bridge of <strong>21 left and 56 right projection neurons</strong> feeding <strong>61 bilateral premotor relays</strong> (<code>0.4673%</code> of connectome edges) restores symmetric bilateral chemotaxis (<code>-0.80</code> left vs. <code>+0.80</code> right) and amplifies <code>DNg97</code> forward sprint drive <strong>38.2-fold</strong>, while targeted abliteration and disinhibition (<code>0.0112%–0.4232%</code> of edges) reprogram escape, grooming, and feeding reflexes with <strong>0.0% off-target behavioral drift</strong>.
+        </p>
+        <div class="hero-links">
+          <a class="btn" href="lab.html">
+            Launch Live 3D Connectome Surgery Lab (MuJoCo + 138k Neurons) →
+          </a>
+          <a class="btn secondary" href="paper.pdf" target="_blank" rel="noopener">
+            Read Full Research Paper (PDF, 20 Pages) →
+          </a>
+          <a class="btn secondary" href="https://github.com/statsleelab/connectome-weight-edit" target="_blank" rel="noopener">
+            GitHub Code &amp; Benchmark Suite
+          </a>
+          <a class="btn secondary" href="https://statsleelab.github.io/weight_space_programming/" target="_blank" rel="noopener">
+            Part I: LLM Weight-Space Programming
+          </a>
+        </div>
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-val">138,639 / 15.09M</div>
+            <div class="kpi-label">Whole-Brain CSR Spiking Graph</div>
+            <div class="kpi-desc">54,492,922 signed synapses integrated at 0.1 ms LIF resolution + 10 kHz MuJoCo physics</div>
           </div>
-          <div id="connectome-editor" class="editor-panel" hidden>
-            <div class="editor-header">
-              <h3>Connectome Weight Editor</h3>
-              <button id="editor-close" class="editor-close" type="button" aria-label="Close weight editor">✕</button>
-            </div>
-            <div class="preset-grid" role="group" aria-label="Connectome weight editing presets">
-              <button type="button" class="preset-btn" data-preset="wild_type" aria-pressed="true">
-                Wild-Type<small>Unmodified v783</small>
-              </button>
-              <button type="button" class="preset-btn" data-preset="super_forager" aria-pressed="false">
-                Super-Forager<small>3-hop chemotaxis</small>
-              </button>
-              <button type="button" class="preset-btn" data-preset="fearless_ablation" aria-pressed="false">
-                Fearless Fly<small>DNp01/MDN ablated</small>
-              </button>
-              <button type="button" class="preset-btn" data-preset="hyper_escape" aria-pressed="false">
-                Hyper-Escape<small>DNp01 disinhibited</small>
-              </button>
-              <button type="button" class="preset-btn" data-preset="obsessive_groomer" aria-pressed="false">
-                Hyper-Groomer<small>DNg62 disinhibited</small>
-              </button>
-              <button type="button" class="preset-btn" data-preset="voracious_feeder" aria-pressed="false">
-                Voracious Feeder<small>Sugar-MN9 boosted</small>
-              </button>
-              <button type="button" class="preset-btn" data-preset="custom" aria-pressed="false" style="grid-column: span 2">
-                Custom Circuit Surgery<small>Select source population, target readout, hop depth &amp; synaptic gain</small>
-              </button>
-            </div>
-            <div class="edit-summary">
-              <div class="edit-summary-top">
-                <strong id="edit-preset-name">Wild-Type (FlyWire v783)</strong>
-                <span id="edit-preset-badge" class="edit-badge">Baseline</span>
-              </div>
-              <p id="edit-preset-desc">Unmodified FlyWire FAFB v783 static synapse weights.</p>
-              <div class="edit-stats-row">
-                <span id="edit-stat-edges">0 / 15,091,983 edges (0.00%)</span>
-                <span id="edit-stat-pot" class="stat-pot">+0 potentiated</span>
-                <span id="edit-stat-sup" class="stat-sup">-0 suppressed</span>
-              </div>
-            </div>
-            <div id="custom-surgery-controls" class="custom-surgery" hidden>
-              <div class="surgery-row">
-                <div class="surgery-field">
-                  <label for="surgery-source">Source population</label>
-                  <select id="surgery-source">
-                    <option value="looming_visual_proxy">Looming visual (LC4/LC6)</option>
-                    <option value="food_odor_left">Food odor left (ORN)</option>
-                    <option value="food_odor_right">Food odor right (ORN)</option>
-                    <option value="sugar_left">Sugar left (LB3)</option>
-                    <option value="sugar_right">Sugar right (LB3)</option>
-                    <option value="antennal_mechanosensory">Mechanosensory (JO)</option>
-                    <option value="walk_dnp09">Walking drive (DNp09)</option>
-                  </select>
-                </div>
-                <div class="surgery-field">
-                  <label for="surgery-target">Target readout</label>
-                  <select id="surgery-target">
-                    <option value="escape_giant_fiber">Escape (DNp01)</option>
-                    <option value="forward_odn1">Forward sprint (DNg97)</option>
-                    <option value="walk_dnp09">Walking (DNp09)</option>
-                    <option value="turn_left">Turn left (DNa01/02 L)</option>
-                    <option value="turn_right">Turn right (DNa01/02 R)</option>
-                    <option value="reverse_mdn">Reverse (MDN)</option>
-                    <option value="groom_adn1">Grooming (DNg62)</option>
-                    <option value="feed_mn9">Feeding (MN9)</option>
-                  </select>
-                </div>
-              </div>
-              <div class="setting">
-                <label for="surgery-hops"><span>Pathway depth</span><output id="surgery-hops-value">2 hops</output></label>
-                <input id="surgery-hops" type="range" min="1" max="3" step="1" value="2">
-              </div>
-              <div class="setting">
-                <label for="surgery-exc"><span>Excitatory synapse gain (0 = ablate)</span><output id="surgery-exc-value">3.0x</output></label>
-                <input id="surgery-exc" type="range" min="0" max="8" step="0.2" value="3.0">
-              </div>
-              <div class="setting">
-                <label for="surgery-inh"><span>Inhibitory synapse gain (0 = disinhibit)</span><output id="surgery-inh-value">0.0x</output></label>
-                <input id="surgery-inh" type="range" min="0" max="4" step="0.1" value="0.0">
-              </div>
-              <button id="apply-surgery-button" class="btn primary" type="button" style="width:100%;margin-top:4px">Apply Circuit Surgery</button>
-            </div>
+          <div class="kpi-card">
+            <div class="kpi-val">-0.71 (L) → +0.80 (R)</div>
+            <div class="kpi-label">3-Hop Chemotaxis Repair (0.467%)</div>
+            <div class="kpi-desc">21L/56R PNs → 61L/61R LAL relays + #112815 clamp abliteration restores symmetric steering</div>
           </div>
-          <div class="legend" aria-label="Neuron class legend">
-            <span><i class="swatch" style="background:#62c48d"></i>Sensory</span>
-            <span><i class="swatch" style="background:#66a7cb"></i>Visual</span>
-            <span><i class="swatch" style="background:#aab3af"></i>Central</span>
-            <span><i class="swatch" style="background:#e8bd57"></i>Descending</span>
-            <span><i class="swatch" style="background:#e1695e"></i>Motor</span>
-            <span><i class="swatch firing" style="background:#ffd65e"></i>Firing</span>
-            <span id="legend-potentiated" hidden><i class="swatch" style="background:#4ef2e0;box-shadow:0 0 6px #4ef2e0"></i>Potentiated synapse</span>
-            <span id="legend-suppressed" hidden><i class="swatch" style="background:#ff5e7e;box-shadow:0 0 6px #ff5e7e"></i>Ablated/Suppressed</span>
+          <div class="kpi-card">
+            <div class="kpi-val">202.4 → 0.0 Hz</div>
+            <div class="kpi-label">Surgical Instinct Abliteration (0.011%)</div>
+            <div class="kpi-desc">Erasing 1,692 excitatory edges onto DNp01/MDN abolishes predator escape (Fearless Fly)</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-val">0.00 Drift</div>
+            <div class="kpi-label">100% Cross-Task Modularity</div>
+            <div class="kpi-desc">Strict diagonal behavioral orthogonality across all 5 phenotypes (zero collateral damage)</div>
           </div>
         </div>
-        <div class="activity-panel">
-          <div class="raster-wrap">
-            <h3>Population firing rate - last 8 seconds</h3>
-            <canvas id="activity-raster" width="640" height="118" aria-label="Firing activity timeline by neuron population"></canvas>
-          </div>
-          <div class="motor-readout">
-            <h3>Descending neuron output</h3>
-            <div class="motor-line"><label><span>Forward</span><output id="motor-forward">0.00</output></label><div class="meter"><span id="motor-forward-meter"></span></div></div>
-            <div class="motor-line"><label><span>Turn</span><output id="motor-turn">0.00</output></label><div class="meter"><span id="motor-turn-meter"></span></div></div>
-            <div class="motor-line escape"><label><span>Escape</span><output id="motor-escape">0.00</output></label><div class="meter"><span id="motor-escape-meter"></span></div></div>
-            <div class="motor-line"><label><span>Feeding</span><output id="motor-feed">0.00</output></label><div class="meter"><span id="motor-feed-meter"></span></div></div>
-            <div class="motor-line"><label><span>Grooming</span><output id="motor-groom">0.00</output></label><div class="meter"><span id="motor-groom-meter"></span></div></div>
-          </div>
-        </div>
-      </section>
-    </main>
-  </div>
+      </div>
 
-  <script>
-    if (location.protocol === "file:") {
-      document.body.innerHTML = `
-        <main style="min-height:100vh;display:grid;place-items:center;padding:24px;background:#0d1011;color:#edf2ef;font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
-          <div style="max-width:520px">
-            <h1 style="margin:0 0 12px;font-size:24px;font-weight:500">Local server required</h1>
-            <p style="margin:0 0 18px;color:#9ca8a3;line-height:1.6">This simulator cannot load its binary connectome or Web Worker from a file URL. Double-click <code style="color:#e8bd57">start.command</code>, then open the localhost address printed in the terminal.</p>
-            <a href="http://127.0.0.1:50761/" style="color:#111516;background:#edf2ef;padding:9px 12px;border-radius:6px;text-decoration:none">Open running simulator</a>
+      <!-- Korean Hero -->
+      <div class="lang-ko">
+        <h1>초파리 전뇌 커넥톰(Whole-Brain Connectome)의<br/>정밀 가중치 공간 프로그래밍을 통한 체화 행동 재설계</h1>
+        <p class="subtitle">
+          <strong>초록 (Abstract) —</strong> 거대언어모델(LLM)의 행동을 학습 없이 조향하거나 특정 능력을 제거(Abliteration)하는 <strong>가중치 공간 프로그래밍(Weight-Space Programming)</strong>을 실제 생명체의 <strong>전뇌 커넥톰(Whole-Brain Connectome)</strong>에 적용할 수 있을까요?
+          본 연구는 성체 초파리(<em>Drosophila melanogaster</em>) 전뇌 전자현미경(EM) 커넥톰(FlyWire FAFB v783; <code>138,639개</code> LIF 뉴런, <code>15,091,983개</code> 방향성 시냅스 엣지, <code>54,492,922개</code> 부호화 시냅스)과 48-액추에이터 생체역학 물리 바디(MuJoCo 기반 NeuroMechFly 2.1)를 <code>15 ms</code> 폐루프로 결합한 후, 압축 희소 행(CSR) 가중치 텐서 위에서 <strong>발화 가중 시냅스 플럭스 역추적(\(\Phi_{u \to v} = s_u W_{uv}\))</strong>과 <strong>양방향 \(k\)-홉 그래프 교집합 탐색</strong>을 수행했습니다.
+          이를 통해 원본 FlyWire v783 뇌가 우측 더듬이 냄새 자극에도 좌회전(<code>motor.turn = -0.71</code>)만 반복하는 선천적 결함의 두 가지 구조적 원인을 규명하고, <strong>좌측 21개·우측 56개 투사 뉴런(PN)과 양측 61개 전운동 중계 뉴런으로 구성된 3-홉 브리지 회로(전체 엣지의 0.4673%)</strong>를 정밀 교정하여 완벽한 좌우 대칭 주화성(<code>-0.80</code> vs. <code>+0.80</code>)과 <code>DNg97</code> 전진 질주 발화의 <strong>38.2배 증폭</strong>을 달성했습니다. 나아가 <code>0.0112%–0.4232%</code>의 초희소 시냅스 편집만으로 공포 제거(Fearless Fly), 과민 도피, 강박적 그루밍, 폭식 표현형을 <strong>타 행동 간섭 0.0%</strong>로 정밀 프로그래밍했습니다.
+        </p>
+        <div class="hero-links">
+          <a class="btn" href="lab.html">
+            실시간 3D 커넥톰 가중치 편집 시뮬레이터 실행 (MuJoCo + 13.8만 뉴런) →
+          </a>
+          <a class="btn secondary" href="paper.pdf" target="_blank" rel="noopener">
+            연구 논문 전문 보기 (PDF, 20 Pages) →
+          </a>
+          <a class="btn secondary" href="https://github.com/statsleelab/connectome-weight-edit" target="_blank" rel="noopener">
+            GitHub 코드 및 벤치마크 저장소
+          </a>
+          <a class="btn secondary" href="https://statsleelab.github.io/weight_space_programming/" target="_blank" rel="noopener">
+            Part I: LLM 가중치 공간 프로그래밍 연구
+          </a>
+        </div>
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-val">138,639 / 15.09M</div>
+            <div class="kpi-label">초파리 전뇌 CSR 스파이킹 텐서</div>
+            <div class="kpi-desc">54,492,922개 시냅스 0.1 ms LIF 적분 + 10 kHz MuJoCo 48-관절 물리 엔진 결합</div>
           </div>
-        </main>`;
-    } else {
-      const script = document.createElement("script");
-      script.type = "module";
-      script.src = "./app.js";
-      document.body.appendChild(script);
-    }
-  </script>
+          <div class="kpi-card">
+            <div class="kpi-val">-0.71 (좌) → +0.80 (우)</div>
+            <div class="kpi-label">3-홉 주화성 회로 복구 (0.467%)</div>
+            <div class="kpi-desc">21L/56R PN → 61L/61R 중계 회로 및 #112815 억제 클램프 절제로 양측 조향 복원</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-val">202.4 → 0.0 Hz</div>
+            <div class="kpi-label">생존 본능 선택적 소거 (0.011%)</div>
+            <div class="kpi-desc">DNp01/MDN 유입 흥분성 엣지 1,692개(0.0112%) 제거로 포식자 도피 반사 완전 차단</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-val">0.00 간섭</div>
+            <div class="kpi-label">100% 교차 행동 모듈 직교성</div>
+            <div class="kpi-desc">다의적 중첩이 심한 밀집 LLM과 달리 5대 행동 표현형 간 부수적 피해(Collateral Drift) 0.0%</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- STICKY NAV -->
+  <nav class="sticky-nav">
+    <div class="container" style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
+      <div class="nav-pills lang-en">
+        <a class="nav-pill" href="#overview">§1 Overview: LLM vs. Brain</a>
+        <a class="nav-pill" href="#detective">§2 3-Stage Tensor Back-Tracing</a>
+        <a class="nav-pill" href="#chemotaxis">§3 Chemotaxis &amp; 2D Plume</a>
+        <a class="nav-pill" href="#phenotypes">§4 6 Surgical Phenotypes</a>
+        <a class="nav-pill" href="#orthogonality">§5 Zero Collateral Drift</a>
+        <a class="nav-pill" href="#live-lab">§6 3D Interactive Lab</a>
+        <a class="nav-pill" href="#reproduce">§7 Reproduce &amp; Paper</a>
+      </div>
+      <div class="nav-pills lang-ko">
+        <a class="nav-pill" href="#overview">§1 연구 배경: LLM vs 생물 뇌</a>
+        <a class="nav-pill" href="#detective">§2 3단계 가중치 역추적 과정</a>
+        <a class="nav-pill" href="#chemotaxis">§3 양측 주화성 및 2D 플룸 추적</a>
+        <a class="nav-pill" href="#phenotypes">§4 6대 커넥톰 표현형 탐색</a>
+        <a class="nav-pill" href="#orthogonality">§5 교차 행동 무간섭 검증</a>
+        <a class="nav-pill" href="#live-lab">§6 실시간 3D 시뮬레이터</a>
+        <a class="nav-pill" href="#reproduce">§7 재현 가이드 및 논문</a>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+        <a class="btn" href="lab.html" style="padding:5px 11px;font-size:12px;">3D Lab →</a>
+        <div class="lang-switch">
+          <button class="lang-btn active" data-set-lang="en">EN</button>
+          <button class="lang-btn" data-set-lang="ko">한국어</button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container">
+
+    <!-- §1 CONCEPTUAL FRAMEWORK -->
+    <section id="overview">
+      <span class="section-tag">§1 · Conceptual Framework &amp; Architecture</span>
+      <div class="lang-en">
+        <h2>From Dense Foundation Models to Ultra-Sparse Biological Connectomes</h2>
+        <p>
+          In deep learning, mechanistic interpretability has progressed from passive activation probing to active <strong>weight-space programming</strong>: locating causal directions or functional circuits inside raw parameter matrices and editing weights directly in place without gradient descent (ROME, MEMIT, refusal abliteration, Takehi et al. 2026).
+          However, dense Transformer layers suffer from <strong>polysemantic superposition</strong>: because dense matrices pack many unrelated features into shared parameter rows, large rank-1 weight edits inevitably perturb co-localized capabilities and spike perplexity.
+        </p>
+        <p>
+          Biological brains occupy a radically different architectural regime. The adult <em>Drosophila melanogaster</em> central brain connectome (FlyWire FAFB v783; <code>138,639</code> neurons and <code>15,091,983</code> directed edges) has a graph density of just \(\rho = 7.85 \times 10^{-4}\) (<strong>99.92% sparse</strong>) and routes sensory signals through anatomically segregated neuropil relays onto dedicated <strong>descending bottleneck neurons</strong> (<code>DNa01/02</code>, <code>DNg97</code>, <code>DNp01</code>, <code>MDN</code>, <code>DNg62</code>, <code>MN9</code>).
+          Yet static electron microscopy (EM) connectome simulations confront the classic <strong>structure–function gap</strong>: raw EM synapse counts \(N_{\text{syn}}(u,v)\) omit (1) physiological asymmetries in presynaptic vesicular release probability (Gaudry et al., <em>Nature</em> 2013) and (2) state-dependent neuromodulatory relief of tonic inhibitory clamps.
+        </p>
+        <div class="grid-3" style="margin-top:20px;">
+          <div class="card" style="margin-top:0;">
+            <h3 style="margin-top:0;color:var(--accent);">① Potentiation (\(\gamma_{\text{exc}} > 1\))</h3>
+            <p style="font-size:14px;">
+              Selectively amplifies excitatory synaptic efficacy \(W_e \leftarrow \text{clip}(\lfloor \gamma_{\text{exc}} W_e^{(0)} \rceil, 1, 32767)\) along isolated \(k\)-hop sensory-to-descending bridges, compensating for EM fan-out dilution and asymmetric release probability.
+            </p>
+          </div>
+          <div class="card" style="margin-top:0;">
+            <h3 style="margin-top:0;color:var(--danger);">② Abliteration (\(W_e \leftarrow 0\))</h3>
+            <p style="font-size:14px;">
+              Analogous to LLM refusal erasure, zeroing out specific excitatory terminal synapses onto command bottlenecks (e.g., <code>1,692</code> edges onto <code>DNp01</code>/<code>MDN</code>) surgically erases an innate survival instinct while leaving visual perception intact.
+            </p>
+          </div>
+          <div class="card" style="margin-top:0;">
+            <h3 style="margin-top:0;color:var(--success);">③ Clamp Disinhibition (\(W^- \leftarrow 0\))</h3>
+            <p style="font-size:14px;">
+              By ranking edges via spike-weighted inhibitory flux \(\Phi_{u \to v} = s_u W_{uv} < 0\), we uncover tonic inhibitory clamp neurons (such as <code>#112815 → #904</code>, <code>DNg62</code> clamps, and <code>MN9</code> gates) whose surgical release unlocks dormant behavioral modules.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="lang-ko">
+        <h2>밀집 트랜스포머(LLM)에서 초희소 생물학적 커넥톰(Connectome)으로의 확장</h2>
+        <p>
+          인공지능 분야에서 기계적 해석가능성(Mechanistic Interpretability)은 단순한 은닉 활성화 관찰을 넘어, 파라미터 행렬 내부의 인과적 부분공간이나 기능 회로를 찾아내어 추가 학습 없이 가중치를 직접 수정하는 <strong>가중치 공간 프로그래밍(Weight-Space Programming)</strong>으로 발전했습니다(ROME, MEMIT, 거절 소거 Abliteration, Takehi et al. 2026).
+          그러나 밀집(Dense) 트랜스포머의 가중치 행렬은 수많은 무관한 개념을 동일한 뉴런과 행에 중첩하여 인코딩하는 <strong>다의적 중첩(Polysemantic Superposition)</strong> 한계를 지닙니다. 이로 인해 특정 행동을 강하게 조향하면 인접한 문법·추론 능력까지 함께 붕괴하는 부수적 피해(Collateral Interference)가 발생합니다.
+        </p>
+        <p>
+          반면 진화가 설계한 생물학적 뇌는 전혀 다른 위상 구조를 갖습니다. 성체 초파리 전뇌 전자현미경(EM) 커넥톰(FlyWire FAFB v783; <code>138,639개</code> 뉴런, <code>15,091,983개</code> 방향성 엣지)은 그래프 밀도가 \(\rho = 7.85 \times 10^{-4}\)에 불과한 <strong>99.92% 초희소(Ultra-sparse) 네트워크</strong>이며, 감각 입력이 해부학적으로 분리된 중계 뉴런들을 거쳐 소수의 <strong>하행 운동 병목 뉴런(Descending Bottleneck Neurons: <code>DNa01/02</code>, <code>DNg97</code>, <code>DNp01</code>, <code>MDN</code>, <code>DNg62</code>, <code>MN9</code>)</strong>으로 수렴합니다.
+          하지만 정적 EM 시냅스 개수(\(N_{\text{syn}}\))만으로 뇌를 시뮬레이션하면 고전적인 <strong>구조-기능 간극(Structure–Function Gap)</strong>에 직면합니다. (1) 시냅스 전 소포 방출 확률의 생리학적 좌우 비대칭성(Gaudry et al., <em>Nature</em> 2013)과 (2) 섭식·각성 상태에 따른 지속성 억제 클램프(Tonic Inhibitory Clamp)의 신경조절 해제가 정적 시냅스 개수에는 반영되어 있지 않기 때문입니다.
+        </p>
+        <div class="grid-3" style="margin-top:20px;">
+          <div class="card" style="margin-top:0;">
+            <h3 style="margin-top:0;color:var(--accent);">① 경로 강화 (Potentiation, \(\gamma_{\text{exc}} > 1\))</h3>
+            <p style="font-size:14px;">
+              양방향 그래프 교집합으로 분리된 \(k\)-홉 감각-운동 브리지 경로의 흥분성 시냅스 가중치 \(W_e \leftarrow \text{clip}(\lfloor \gamma_{\text{exc}} W_e^{(0)} \rceil, 1, 32767)\)를 선택적으로 증폭하여, 시냅스 방출 확률 비대칭과 팬아웃(Fan-out) 희석을 보정합니다.
+            </p>
+          </div>
+          <div class="card" style="margin-top:0;">
+            <h3 style="margin-top:0;color:var(--danger);">② 표적 능력 소거 (Abliteration, \(W_e \leftarrow 0\))</h3>
+            <p style="font-size:14px;">
+              LLM의 거절 회로 소거와 동일한 원리로, 특정 하행 명령 뉴런(예: <code>DNp01</code>/<code>MDN</code>)으로 유입되는 말단 흥분성 엣지(<code>1,692개</code>, <code>0.0112%</code>)만 0으로 절제하여 시각 인지는 보존한 채 도피 본능만 완벽히 제거합니다.
+            </p>
+          </div>
+          <div class="card" style="margin-top:0;">
+            <h3 style="margin-top:0;color:var(--success);">③ 억제 클램프 해제 (Disinhibition, \(W^- \leftarrow 0\))</h3>
+            <p style="font-size:14px;">
+              발화 가중 시냅스 플럭스(\(\Phi_{u \to v} = s_u W_{uv} < 0\)) 역추적을 통해 하행 뉴런을 마비시키고 있는 지속성 억제 클램프(<code>#112815 → #904</code>, <code>DNg62</code> 및 <code>MN9</code> 게이트)를 색출하고 이를 절제하여 잠재된 반사 행동을 해방시킵니다.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- §2 MECHANISTIC REVERSE-ENGINEERING DETECTIVE WORKFLOW -->
+    <section id="detective">
+      <span class="section-tag">§2 · Mechanistic Reverse-Engineering on Raw CSR Weight Tensors</span>
+      <div class="lang-en">
+        <h2>How We Solved the Wild-Type Left-Turning Paradox Directly from Raw Weights</h2>
+        <p>
+          When the unedited FlyWire v783 connectome (<code>Wild-Type</code>) is presented with a strong unilateral food odor on its <strong>right antenna</strong> (<code>130 Hz</code> right vs. <code>20 Hz</code> left under <code>55 Hz</code> hunger drive), it fails to turn right toward the food source; instead, it turns sharply <strong>left</strong> away from the odor (<code>turn_left = 22.6 Hz</code>, <code>turn_right = 6.3 Hz</code>, <code>motor.turn = -0.71</code>).
+          Crucially, the binary CSR connectome arrays (<code>offsets.u32</code>, <code>targets.u32</code>, <code>weights.i16</code>, <code>sides.u8</code>) contain <strong>no text labels for internal interneurons</strong> (&gt;99% of neurons are unannotated integers <code>0...138,638</code>).
+          Explore the three tabs below to trace our exact algorithmic detective workflow across all <code>15,091,983</code> edges:
+        </p>
+      </div>
+      <div class="lang-ko">
+        <h2>원시 CSR 가중치 텐서 역추적(Back-Tracing): 왜 원본 초파리 뇌는 우측 냄새에도 좌회전만 했는가?</h2>
+        <p>
+          편집하지 않은 원본 FlyWire v783 커넥톰(<code>Wild-Type</code>)의 <strong>우측 더듬이</strong>에 강한 음식 냄새 자극(우측 <code>130 Hz</code> vs 좌측 <code>20 Hz</code>, 배고픔 드라이브 <code>55 Hz</code>)을 주입하면, 초파리는 먹이가 있는 오른쪽으로 돌지 못하고 오히려 <strong>왼쪽으로 급격히 잘못 회전</strong>합니다(<code>turn_left = 22.6 Hz</code>, <code>turn_right = 6.3 Hz</code>, <code>motor.turn = -0.71</code>).
+          중요한 점은 CSR 이진 데이터(<code>offsets.u32</code>, <code>targets.u32</code>, <code>weights.i16</code>, <code>sides.u8</code>) 내부의 중계 뉴런 99% 이상에 <strong>어떠한 이름이나 텍스트 주석도 없이 오직 <code>0...138,638</code>이라는 정수 인덱스와 가중치 숫자만 존재</strong>한다는 사실입니다.
+          아래 3개의 탭을 클릭하여 <code>15,091,983개</code> 시냅스 텐서를 역추적해 결함의 원인과 3-홉 회로를 찾아낸 전 과정을 확인해 보세요.
+        </p>
+      </div>
+      <div class="card">
+        <div id="detective-tabs" class="tabs"></div>
+        <div id="detective-content"></div>
+      </div>
+    </section>
+
+    <!-- §3 CHEMOTAXIS CALIBRATION & 2D PLUME NAVIGATION -->
+    <section id="chemotaxis">
+      <span class="section-tag">§3 · Bilateral Chemotaxis &amp; Closed-Loop 2D Plume Navigation</span>
+      <div class="lang-en">
+        <h2>Restoring Symmetric Sigmoidal Steering and Closed-Loop Odor-Plume Tracking</h2>
+        <p>
+          Having isolated the exact 3-hop olfactory-steering bridge—<strong>21 Left PNs → 61 Left LAL Relays → <code>turn_left</code></strong> (91 terminal edges) and <strong>56 Right PNs → 61 Right LAL Relays → <code>turn_right</code></strong> (106 terminal edges)—plus the 67 bilateral bridge edges onto <code>DNg97</code> (<code>forward_odn1</code>), we noticed a critical structural bottleneck:
+          the left bridge concentrates all ipsilateral ORN excitation onto just <strong>21 PNs</strong>, whereas the right bridge dilutes ORN excitation across <strong>56 PNs</strong> (\(2.67\times\) wider fan-out, reducing per-neuron depolarization relative to the \(-45\text{ mV}\) spiking threshold).
+          By calibrating Hop-3 Relay→DN gain (\(\gamma_3^{\text{L}} = 1.75\times\) vs. \(\gamma_3^{\text{R}} = 8.2\times\)), suppressing contralateral ORN spillover (\(0.15\times\)), and ablating the tonic inhibitory clamps (modifying <code>70,530</code> edges = <strong>0.4673%</strong> of the brain), <code>Super-Forager</code> achieves a symmetric psychometric steering curve and tracks a 2D spatial odor plume straight to the source.
+        </p>
+      </div>
+      <div class="lang-ko">
+        <h2>양측 대칭 시그모이드 조향 곡선 복원 및 폐루프 2D 냄새 플룸(Plume) 정밀 추적</h2>
+        <p>
+          양방향 3-홉 교집합 탐색으로 찾아낸 후각-조향 브리지 회로—<strong>좌측 21개 PN → 61개 전운동 중계 뉴런 → <code>turn_left</code></strong>(말단 91개 엣지) 및 <strong>우측 56개 PN → 61개 전운동 중계 뉴런 → <code>turn_right</code></strong>(말단 106개 엣지)—와 전진 질주 뉴런 <code>DNg97</code>으로 수렴하는 67개 엣지를 분석한 결과, 결정적인 병목 비대칭이 드러났습니다.
+          좌측 경로는 동측 ORN 흥분 신호를 단 <strong>21개의 PN</strong>에 집중시켜 발화 임계치(\(-45\text{ mV}\))를 쉽게 넘기는 반면, 우측 경로는 <strong>56개의 PN</strong>으로 신호가 \(2.67\times\) 넓게 분산(Fan-out dilution)되어 개별 뉴런의 막전위 상승이 약화됩니다.
+          이에 맞춰 Hop-3 중계→하행 이득을 비대칭 보정(\(\gamma_3^{\text{L}} = 1.75\times\) vs \(\gamma_3^{\text{R}} = 8.2\times\))하고, 교차 반구 누출 억제(\(0.15\times\)) 및 지속성 억제 클램프 절제를 결합(총 <code>70,530개</code> 엣지 = 전체 뇌의 <strong>0.4673%</strong> 편집)함으로써 완벽한 시그모이드 조향 곡선과 2D 공간 플룸 추적을 구현했습니다.
+        </p>
+      </div>
+      <div class="card">
+        <div id="chemotaxis-tabs" class="tabs"></div>
+        <div id="chemotaxis-content"></div>
+      </div>
+    </section>
+
+    <!-- §4 SIX SURGICAL CONNECTOME PHENOTYPES -->
+    <section id="phenotypes">
+      <span class="section-tag">§4 · Surgical Abliteration &amp; Disinhibition Across Innate Modules</span>
+      <div class="lang-en">
+        <h2>Interactive Explorer: Six Surgical Connectome Phenotypes (0.0112%–0.4673% Edges)</h2>
+        <p>
+          Does our weight-space attribution and surgical editing framework generalize beyond chemotaxis?
+          By applying backward CSR edge audits across three additional innate sensorimotor hierarchies—looming predator escape (<code>DNp01</code> Giant Fiber &amp; <code>MDN</code> Moonwalker), mechanosensory antennal grooming (<code>DNg62</code> / <code>aDN1</code>), and gustatory proboscis extension (<code>MN9</code>)—we engineered five surgical connectome phenotypes alongside the unedited <code>Wild-Type</code> baseline. Select any phenotype below to inspect its exact synaptic circuit mechanism and quantitative readout profile:
+        </p>
+      </div>
+      <div class="lang-ko">
+        <h2>6대 초파리 커넥톰 표현형(Phenotype) 대화형 탐색기 (전체 시냅스의 0.0112%–0.4673% 편집)</h2>
+        <p>
+          본 연구의 가중치 텐서 역추적 및 정밀 수술 프레임워크가 후각 주화성 이외의 선천적 본능 회로에도 일반화될 수 있을까요?
+          시각적 포식자 도피 회로(거대섬유 <code>DNp01</code> 및 후진 보행 <code>MDN</code>), 더듬이 기계감각 그루밍 회로(<code>DNg62</code> / <code>aDN1</code>), 그리고 미각 주둥이 신전 섭식 회로(<code>MN9</code>)에 대해 동일한 역방향 CSR 시냅스 감사를 수행하여 5종의 정밀 편집 표현형을 구축했습니다. 아래 탭을 클릭하여 각 표현형의 정확한 뉴런 인덱스와 발화율 변화를 확인해 보세요.
+        </p>
+      </div>
+      <div class="card">
+        <div id="preset-tabs" class="tabs"></div>
+        <div id="preset-content"></div>
+      </div>
+    </section>
+
+    <!-- §5 CROSS-TASK BEHAVIORAL ORTHOGONALITY & BENCHMARK TABLES -->
+    <section id="orthogonality">
+      <span class="section-tag">§5 · Cross-Task Behavioral Orthogonality &amp; Quantitative Benchmarks</span>
+      <div class="lang-en">
+        <h2>Strict Diagonal Modularity: Why Sparse Connectome Edits Suffer Zero Collateral Drift</h2>
+        <p>
+          A central finding of our study emerges when we compare the cross-task perturbation matrix of biological connectome weight edits against dense Transformer weight-space programming.
+          Whereas rank-1 projections in dense LLMs perturb \(10^6\text{–}10^7\) shared weights and degrade fluency at large steering scales, our five connectome edits exhibit <strong>100.0% target behavioral specificity with 0.00 off-diagonal drift</strong> across all non-target sensorimotor assays:
+        </p>
+      </div>
+      <div class="lang-ko">
+        <h2>완벽한 대각 직교성(Diagonal Orthogonality): 밀집 LLM과 구별되는 생물학적 커넥톰의 무간섭 모듈성</h2>
+        <p>
+          생물학적 커넥톰 가중치 편집의 교차 과제 섭동 행렬(Cross-Task Perturbation Matrix)을 밀집 트랜스포머(LLM)의 가중치 편집과 비교하면 핵심적인 구조적 차이가 드러납니다.
+          밀집 신경망에서는 단일 개념 방향을 투영하더라도 수백만 개의 공유 가중치가 동시에 변형되어 강도를 높일수록 타 과제의 성능이 급락하는 반면, 초파리 커넥톰의 5대 수술 프리셋은 표적 행동만 정확히 재설계하고 <strong>비표적 행동에서는 모두 오차 0.00의 완벽한 독립성(Zero Collateral Drift)</strong>을 유지합니다.
+        </p>
+      </div>
+      <div class="card">
+        <div id="orthogonality-content"></div>
+      </div>
+    </section>
+
+    <!-- §6 LIVE 3D SIMULATOR LAUNCHER -->
+    <section id="live-lab">
+      <span class="section-tag">§6 · Real-Time Browser-Based 3D Connectome Surgery Laboratory</span>
+      <div class="lang-en">
+        <h2>Interactive 3D Brain &amp; MuJoCo Biomechanical Physics Laboratory</h2>
+        <p>
+          Our open-source web laboratory executes the complete <code>138,639</code>-neuron FlyWire v783 CSR spiking engine inside a dedicated Web Worker coupled every <code>15 ms</code> to the 48-actuator NeuroMechFly 2.1 MuJoCo WebAssembly physics engine.
+          You can apply any of the six presets in real time or perform custom 1–3 hop surgical pathway edits between arbitrary sensory and descending pools while visualizing potentiated synapses in <strong>cyan (<code>#4ef2e0</code>)</strong> and ablated/suppressed synapses in <strong>magenta (<code>#ff5e7e</code>)</strong> directly inside the 3D anatomical brain mesh.
+        </p>
+        <div class="callout green" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;padding:20px 24px;">
+          <div style="max-width:680px;">
+            <strong style="font-size:16px;display:block;margin-bottom:4px;">Ready to test the edited connectomes in 3D closed-loop physics?</strong>
+            <span>Click the button to open the full-screen WebGL + MuJoCo simulator (<code>lab.html</code>). Use the <strong>Weight Edit</strong> panel in the top bar to switch between <code>Wild-Type</code>, <code>Super-Forager</code>, <code>Fearless Fly</code>, <code>Hyper-Escape</code>, <code>Obsessive Groomer</code>, and <code>Voracious Feeder</code>, or drop food odor, dust, and looming threats into the arena.</span>
+          </div>
+          <a class="btn" href="lab.html" style="font-size:15px;padding:12px 22px;">
+            Open 3D Connectome Surgery Lab →
+          </a>
+        </div>
+      </div>
+
+      <div class="lang-ko">
+        <h2>실시간 웹 기반 3D 전뇌 스파이킹 &amp; MuJoCo 생체역학 시뮬레이션 연구실</h2>
+        <p>
+          본 연구의 오픈소스 웹 실험실은 <code>138,639개</code> 뉴런과 <code>15,091,983개</code> 시냅스로 구성된 FlyWire v783 CSR 스파이킹 엔진을 전용 Web Worker에서 실시간 구동하며, <code>15 ms</code> 주기로 48-관절 NeuroMechFly 2.1 MuJoCo WebAssembly 물리 엔진과 감각-운동 폐루프 동기화를 수행합니다.
+          6대 수술 프리셋을 즉시 적용하거나 원하는 감각 풀과 하행 운동 풀 사이의 1~3홉 브리지 회로를 직접 탐색·편집할 수 있으며, 3D 해부학적 뇌 공간 위에서 강화된 시냅스는 <strong>청록색(<code>#4ef2e0</code>)</strong>, 억제·절제된 시냅스는 <strong>자홍색(<code>#ff5e7e</code>)</strong> 발광 포인트로 실시간 시각화됩니다.
+        </p>
+        <div class="callout green" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;padding:20px 24px;">
+          <div style="max-width:680px;">
+            <strong style="font-size:16px;display:block;margin-bottom:4px;">3D 물리 아레나에서 편집된 초파리 뇌를 직접 실험해 보세요</strong>
+            <span>오른쪽 버튼을 누르면 전체 화면 WebGL + MuJoCo 시뮬레이터(<code>lab.html</code>)가 실행됩니다. 상단 툴바의 <strong>Weight Edit</strong> 버튼을 눌러 6가지 표현형 프리셋을 즉시 전환하거나, 음식 냄새(Add food), 먼지 접촉(Touch), 포식자 위협(Threat) 자극을 주입해 행동 변화를 비교할 수 있습니다.</span>
+          </div>
+          <a class="btn" href="lab.html" style="font-size:15px;padding:12px 22px;">
+            3D 커넥톰 시뮬레이터 실행하기 →
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- §7 REPRODUCIBILITY & PAPER -->
+    <section id="reproduce">
+      <span class="section-tag">§7 · Reproducibility Guide &amp; Full Manuscript</span>
+      <div class="lang-en">
+        <h2>Reproduce All Quantitative Benchmarks &amp; Unit Tests Locally</h2>
+        <p>
+          All CSR connectome weight-editing operators (<code>connectome-editor.mjs</code>), whole-brain LIF spiking engines (<code>brain-core.mjs</code>), automated unit tests, and quantitative benchmark suites are openly available in <a href="https://github.com/statsleelab/connectome-weight-edit" target="_blank" rel="noopener">statsleelab/connectome-weight-edit</a>, and the full 20-page research paper is available at <a href="paper.pdf" target="_blank" rel="noopener">paper.pdf</a>.
+        </p>
+      </div>
+      <div class="lang-ko">
+        <h2>로컬 환경에서의 정량 벤치마크 및 유닛 테스트 재현 방법</h2>
+        <p>
+          CSR 커넥톰 가중치 편집 엔진(<code>connectome-editor.mjs</code>), 전뇌 LIF 스파이킹 코어(<code>brain-core.mjs</code>), 유닛 테스트 및 6대 표현형 정량 벤치마크 스위트 전체가 <a href="https://github.com/statsleelab/connectome-weight-edit" target="_blank" rel="noopener">statsleelab/connectome-weight-edit</a> 저장소에 공개되어 있으며, 20페이지 분량의 연구 논문 전문은 <a href="paper.pdf" target="_blank" rel="noopener">paper.pdf</a>에서 바로 열람할 수 있습니다.
+        </p>
+      </div>
+      <pre><code>git clone https://github.com/statsleelab/connectome-weight-edit.git
+cd connectome-weight-edit
+
+# 1. Run unit tests for CSR connectome pathway discovery, weight surgery, and rollback
+node --test tests/connectome-editor.test.mjs
+
+# 2. Run the whole-brain quantitative sensorimotor benchmark across all 6 presets
+node tools/run-weight-edit-benchmarks.mjs
+
+# 3. Launch the local 3D WebGL + MuJoCo interactive laboratory
+python3 serve.py</code></pre>
+    </section>
+
+  </main>
+
+  <footer>
+    <div class="container">
+      <p>
+        Research &amp; Engineering by <strong>Donghyung Lee (StatsLeeLab)</strong> · FlyWire FAFB v783 Connectome &amp; NeuroMechFly 2.1 MuJoCo Platform (2026)
+      </p>
+    </div>
+  </footer>
+
+  <script src="guide-app.js?v=1"></script>
 </body>
 </html>
